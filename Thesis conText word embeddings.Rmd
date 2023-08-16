@@ -1,0 +1,430 @@
+---
+title: "Word embedidngs using conText"
+output: html_document
+date: "2023-08-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This R Markdown contains the code for the word embeding analysis, taking from Rodriguez et al (2023a and 2023b). The analysis used in the thesis uses the wrapper function with 100 boostraps. In this markdown, however, the analysis to complete each embedding once is also included below. 
+
+Rodriguez, P., Spirling, A., and Stewart B. (2023a) _conText: 'a la Carte' on Text (ConText) Embedding Regression_. R package version 1.4.3. Available at: https://CRAN.R-project.org/package=conText 
+Rodriguez, P., Spirling, A., and Stewart, B. (2023b) ‘Embedding Regression: Models for Context-Specific Description and Inference’,  American Political Science Review, pp. 1-20. 
+
+
+```{r}
+# other libraries used in this guide
+library(quanteda)
+library(dplyr)
+library(text2vec)
+library(conText)
+library(tidyverse)
+# If there is a problem witht he dfm, run this code: 
+#install.packages('Matrix')
+#library(Matrix)
+```
+
+
+```{r}
+c <- read.csv("~/Documents/ASDS/Thesis /BudgetStatementsCleaned.csv") %>%
+  select(-c(X))
+
+corp <- corpus(c)
+
+docnames(corp) <- c$speaker
+  #c("Gordon Brown 97","Gordon Brown 98", "Gordon Brown 99", "Gordon Brown 00", "Gordon Brown 01", "Gordon Brown 02", "Gordon Brown 03", "Gordon Brown 04", "Gordon Brown 05", "Gordon Brown 06", "Gordon Brown 07", "Alistair Darling 08",  "Alistair Darling 09", "Alistair Darling March 10", "George Osborne 10","George Osborne 11", "George Osborne 12", "George Osborne 13", "George Osborne 14", "George Osborne March 15", "George Osborne July 15", "George Osborne 16","Phillip Hammond March 17","Phillip Hammond Nov 17","Phillip Hammond 18", "Rishi Sunak 20","Rishi Sunak March 21","Rishi Sunak Oct 21", "Jeremy Hunt 22", "Jeremy Hunt 23")
+
+# Clean corpus 
+budget_tokens <- tokens(corp, remove_punct = TRUE, remove_numbers = TRUE , remove_symbols = T, remove_separators = T) %>%
+  tokens_remove(c(stopwords("en"), "can", "also", "get", "now", "government", "uk", "make", "already", "means", "next", "us", "mr", "speaker", "deputy", "want", "like", "tax", "year", "per", "cent", "today", "new", "2015-16", "rhf",  "its", "well", "were", "weve", "thats", "march", "cent", "pre-budget", "honourable",  "going", "don’t", "let", ".", "cent", "say", "people", "plan", "today", "largest", "thank", "column", "will", "country", "need", "deliver", "announce", "propose", "promise", "week", "countries", "set", "budget", "billion", "million", "april", "britain", "promis", "invest", "support", "just", "meet", "take", "work", "bn", "economic", "economy", "secretaries", "made", "announcing", "are", "able", "forecast", "united kingdom", "british", "get", "year", "madame", "measure", "done", "take", "fact", "one", "even","making", "many", "still", "without", "know", "course", "way", "much", "almost", "really", "put", "part", "know", "makes", "another", "many", "least", "yet", "back", "getting", "terms", "believe", "long", "good", "must", "look", "continue", "come", "far", "past", "see", "what", "real", "getting", "keep", "enough", "find", "simply", "bill", "comes", "goes", "come", "sure", "taking", "place", "last", "around", "actually", "however", "think", "many", "first", "needs", "right", "less", "little", "bring", "thing", "bring", "across", "needed")) %>% 
+  tokens_remove(pattern = "\\d{4}-\\d{2}") %>% tokens_wordstem()
+
+toks_nostop <- tokens_select(budget_tokens, min_nchar=3)
+
+# only use features that appear at least 5 times in the corpus
+feats <- dfm(toks_nostop, tolower=T, verbose = FALSE) %>% dfm_trim(min_termfreq = 5) %>% featnames()
+toks_nostop_feats <- tokens_select(toks_nostop, feats, padding = TRUE)
+
+# summary(toks_nostop_feats)
+
+```
+
+Now we have to build nine tokenised corpori of contexts (one for each embedding)
+```{r}
+income_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "incom*", window = 5L)
+job_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "job*", window = 5L)
+housing_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "hous*", window = 5L)
+elderly_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "elder*", window = 5L)
+child_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "child*", window = 5L)
+parent_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "parent*", window = 5L)
+family_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "famil*", window = 5L)
+education_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "educat*", window = 5L)
+nhs_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "nhs*", window = 5L)
+immi_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "immi*", window = 5L)
+homeless_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "home*", window = 5L)
+invest_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "invest*", window = 5L)
+benefit_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "benefit*", window = 5L)
+cut_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "cut*", window = 5L)
+public_toks <- conText::tokens_context(x = toks_nostop_feats, pattern = "public*", window = 5L)
+
+```
+
+Load in the pre-trained word embeddings and create trasnformation matrix 
+```{r}
+# Glove pre trained word embeddings with 300 dimensions. 
+cr_glove <- readRDS("/Users/ruthboardman/Documents/ASDS/Thesis /cr_glove.rds")
+
+
+
+#' # construct feature-co-occurrence matrix
+toks_fcm <- fcm(toks_nostop, context = "window", window = 6,
+ count = "weighted", weights = 1 / (1:6), tri = FALSE)
+
+# Get transportation matrix 
+local_transform <- compute_transform(x = toks_fcm, pre_trained = cr_glove, weighting = 'log')
+
+```
+
+Use the wrapper function to bootsrap the results. The output from this is used in the thesis. 
+```{r}
+feats_inc <- featnames(dfm(income_toks))
+feats_educ <- featnames(dfm(education_toks))
+
+# compare nearest neighbors between groups
+set.seed(2021L)
+income_party_nns <- get_nns(x = income_toks, N = 15,
+        groups = docvars(income_toks, 'party'),
+        candidates = feats,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+educ_party_nns <- get_nns(x = education_toks, N = 15,
+        groups = docvars(education_toks, 'party'),
+        candidates = feats_educ,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_child <- featnames(dfm(child_toks))
+child_party_nns <- get_nns(x = child_toks, N = 15,
+        groups = docvars(child_toks, 'party'),
+        stem = F,
+        candidates = feats_child,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_elderly<- featnames(dfm(elderly_toks))
+eld_party_nns <- get_nns(x = elderly_toks, N = 15,
+        groups = docvars(elderly_toks, 'party'),
+        stem = F,
+        candidates = feats_elderly,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_family <- featnames(dfm(family_toks))
+family_party_nns <- get_nns(x = family_toks, N = 15,
+        groups = docvars(family_toks, 'party'),
+        stem = F,
+        candidates = feats_family,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_parent <- featnames(dfm(parent_toks))
+parent_party_nns <- get_nns(x = parent_toks, N = 15,
+        groups = docvars(parent_toks, 'party'),
+        stem = F,
+        candidates = feats_parent,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_invest <- featnames(dfm(invest_toks))
+invest_party_nns <- get_nns(x = invest_toks, N = 15,
+        groups = docvars(invest_toks, 'party'),
+        stem = F,
+        candidates = feats_invest,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+feats_job <- featnames(dfm(job_toks))
+job_party_nns <- get_nns(x = job_toks, N = 15,
+        groups = docvars(job_toks, 'party'),
+        stem = F,
+        candidates = feats_job,
+        pre_trained = cr_glove_subset,
+        transform = TRUE,
+        transform_matrix = cr_transform,
+        bootstrap = TRUE,
+        num_bootstraps = 100, 
+        confidence_level = 0.95,
+        as_list = TRUE)
+
+job_party_nns
+invest_party_nns
+income_party_nns
+educ_party_nns
+child_party_nns
+eld_party_nns
+family_party_nns
+parent_party_nns
+```
+
+The following code is not included in the thesis, however shows how to complete the embeddings without bootstrapping the results. 
+Now build a document feature matrix 
+```{r}
+
+income_dfm <- dfm(income_toks, verbose = F)
+job_dfm <- dfm(job_toks)
+housing_dfm <- dfm(housing_toks)
+elderly_dfm <- dfm(elderly_toks)
+child_dfm <- dfm(child_toks)
+parent_dfm <- dfm(parent_toks)
+family_dfm <- dfm(family_toks)
+education_dfm <- dfm(education_toks)
+nhs_dfm <- dfm(nhs_toks)
+immi_dfm <- dfm(immi_toks)
+homeless_dfm <- dfm(homeless_toks)
+invest_dfm <- dfm(invest_toks)
+cut_dfm <- dfm(cut_toks)
+public_dfm <- dfm(public_toks)
+benefit_dfm <- dfm(benefit_toks)
+```
+
+Creat a document embedding matrix for each embedding word. 
+```{r}
+income_dem <- dem(x = income_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+income_wv_party <- dem_group(income_dem, groups = income_dem@docvars$party)
+
+
+# job 
+job_dem <- dem(x = job_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+job_wv_party <- dem_group(job_dem, groups = job_dem@docvars$party)
+
+
+#housing 
+housing_dem <- dem(x = housing_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+housing_wv_party <- dem_group(housing_dem, groups = housing_dem@docvars$party)
+
+
+# elderly 
+elderly_dem <- dem(x = elderly_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+elderly_wv_party <- dem_group(elderly_dem, groups = elderly_dem@docvars$party)
+
+
+# child 
+child_dem <- dem(x = child_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+child_wv_party <- dem_group(child_dem, groups = child_dem@docvars$party)
+
+
+# parent 
+parent_dem <- dem(x = parent_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+parent_wv_party <- dem_group(parent_dem, groups = parent_dem@docvars$party)
+
+
+# family 
+family_dem <- dem(x = family_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+family_wv_party <- dem_group(family_dem, groups = family_dem@docvars$party)
+
+
+# education 
+education_dem <- dem(x = education_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+education_wv_party <- dem_group(education_dem, groups = education_dem@docvars$party)
+
+
+# nhs 
+nhs_dem <- dem(x = nhs_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+nhs_wv_party <- dem_group(nhs_dem, groups = nhs_dem@docvars$party)
+
+
+# Immigration
+immi_dem <- dem(x = immi_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+immi_wv_party <- dem_group(immi_dem, groups = immi_dem@docvars$party)
+
+# Home
+home_dem <- dem(x = homeless_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+home_wv_party <- dem_group(home_dem, groups = home_dem@docvars$party)
+
+#Invest 
+invest_dem <- dem(x = invest_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+invest_wv_party <- dem_group(invest_dem, groups = invest_dem@docvars$party)
+
+# Benefit
+benefit_dem <- dem(x = benefit_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+benefit_wv_party <- dem_group(benefit_dem, groups = benefit_dem@docvars$party)
+
+# Cut
+cut_dem <- dem(x = cut_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+cut_wv_party <- dem_group(cut_dem, groups = cut_dem@docvars$party)
+
+# Public
+public_dem <- dem(x = public_dfm, pre_trained = cr_glove, transform = TRUE, transform_matrix = local_transform, verbose = TRUE)
+public_wv_party <- dem_group(public_dem, groups = public_dem@docvars$party)
+
+```
+
+Find the nearest ten neighbours for each embedding. 
+```{r}
+# Nearest neighbour 
+income_nns <- nns(income_wv_party, pre_trained = cr_glove, N = 10, candidates = income_wv_party@features, as_list = TRUE)
+
+job_nns <- nns(job_wv_party, pre_trained = cr_glove, N = 10, candidates = job_wv_party@features, as_list = TRUE)
+
+housing_nns <- nns(housing_wv_party, pre_trained = cr_glove, N = 10, candidates = housing_wv_party@features, as_list = TRUE)
+
+elderly_nns <- nns(elderly_wv_party, pre_trained = cr_glove, N = 10, candidates = elderly_wv_party@features, as_list = TRUE)
+
+child_nns <- nns(child_wv_party, pre_trained = cr_glove, N = 10, candidates = child_wv_party@features, as_list = TRUE)
+
+parent_nns <- nns(parent_wv_party, pre_trained = cr_glove, N = 10, candidates = parent_wv_party@features, as_list = TRUE)
+
+family_nns <- nns(family_wv_party, pre_trained = cr_glove, N = 10, candidates = family_wv_party@features, as_list = TRUE)
+
+education_nns <- nns(education_wv_party, pre_trained = cr_glove, N = 10, candidates = education_wv_party@features, as_list = TRUE)
+
+nhs_nns <- nns(nhs_wv_party, pre_trained = cr_glove, N = 10, candidates = nhs_wv_party@features, as_list = TRUE)
+
+immi_nns <- nns(immi_wv_party, pre_trained = cr_glove, N = 10, candidates = immi_wv_party@features, as_list = TRUE)
+
+home_nns <- nns(home_wv_party, pre_trained = cr_glove, N = 10, candidates = home_wv_party@features, as_list = TRUE)
+
+invest_nns <- nns(invest_wv_party, pre_trained = cr_glove, N = 10, candidates = invest_wv_party@features, as_list = TRUE)
+
+benefit_nns <- nns(benefit_wv_party, pre_trained = cr_glove, N = 10, candidates = benefit_wv_party@features, as_list = TRUE)
+
+cut_nns <- nns(cut_wv_party, pre_trained = cr_glove, N = 10, candidates = cut_wv_party@features, as_list = TRUE)
+
+public_nns <- nns(public_wv_party, pre_trained = cr_glove, N = 10, candidates = public_wv_party@features, as_list = TRUE)
+```
+
+
+Find the nearest context neighbours. This gives the whole sentences around the embedding, to help explain the embedding. 
+```{r}
+f_cont <- ncs(x = family_wv_party, contexts_dem = family_dem, contexts = family_toks, N = 10, as_list = TRUE)
+f_cont[["Labour"]]
+
+```
+
+
+Tranform results intro dataframes and bind the two embeddings together. 
+```{r}
+# check out results for each party 
+inc_l <- as.data.frame(income_nns[["Labour"]]) %>% rename(income = feature)
+incl_c <- as.data.frame(income_nns[["Conservative"]]) %>% rename(income = feature)
+income <- rbind(inc_l, incl_c)
+
+job_l <- as.data.frame(job_nns[["Labour"]]) %>% rename(job = feature)
+job_c <- as.data.frame(job_nns[["Conservative"]]) %>% rename(job = feature)
+job <- rbind(job_l, job_c)
+
+hous_l <- as.data.frame(housing_nns[["Labour"]]) %>% rename(house = feature)
+hous_c <- as.data.frame(housing_nns[["Conservative"]]) %>% rename(house = feature)
+hous <- rbind(hous_c, hous_l)
+
+eld_l <- as.data.frame(elderly_nns[["Labour"]]) %>% rename(elderly = feature)
+eld_c <- as.data.frame(elderly_nns[["Conservative"]]) %>% rename(elderly = feature)
+eld <- rbind(eld_l, eld_c)
+
+child_l <- as.data.frame(child_nns[["Labour"]]) %>% rename(child = feature)
+child_c <- as.data.frame(child_nns[["Conservative"]]) %>% rename(child = feature)
+child <- rbind(child_c, child_l)
+
+parent_l <- as.data.frame(parent_nns[["Labour"]]) %>% rename(parent = feature)
+parent_c <- as.data.frame(parent_nns[["Conservative"]]) %>% rename(parent = feature)
+parent <- rbind(parent_c, parent_l)
+
+fam_l <- as.data.frame(family_nns[["Labour"]]) %>% rename(family = feature)
+fam_c <- as.data.frame(family_nns[["Conservative"]]) %>% rename(family = feature)
+fam <- rbind(fam_l, fam_c)
+
+educ_l <- as.data.frame(education_nns[["Labour"]]) %>% rename(education = feature)
+educ_c <- as.data.frame(education_nns[["Conservative"]]) %>% rename(education = feature)
+educ <- rbind(educ_c, educ_l)
+
+nhs_l <- as.data.frame(nhs_nns[["Labour"]]) %>% rename(nhs = feature)
+nhs_c <- as.data.frame(nhs_nns[["Conservative"]]) %>% rename(nhs = feature)
+nhs <- rbind(nhs_c, nhs_l)
+
+immi_l <- as.data.frame(immi_nns[["Labour"]]) %>% rename(immi = feature)
+immi_c <- as.data.frame(immi_nns[["Conservative"]]) %>% rename(immi = feature)
+immi <- rbind(immi_l, immi_c)
+
+home_l <- as.data.frame(home_nns[["Labour"]]) %>% rename(home = feature)
+home_c <- as.data.frame(home_nns[["Conservative"]]) %>% rename(home = feature)
+home <- rbind(home_c, home_l)
+
+invest_l <- as.data.frame(invest_nns[["Labour"]]) %>% rename(invest = feature)
+invest_c <- as.data.frame(invest_nns[["Conservative"]]) %>% rename(invest = feature)
+invest <- rbind(invest_c, invest_l)
+
+benefit_l <- as.data.frame(benefit_nns[["Labour"]]) %>% rename(benefit = feature) 
+benefit_c <- as.data.frame(benefit_nns[["Conservative"]]) %>% rename(benefit = feature)
+benefit <- rbind(benefit_c, benefit_l)
+
+cut_l <- as.data.frame(cut_nns[["Labour"]]) %>% rename(cut = feature) 
+cut_c <- as.data.frame(cut_nns[["Conservative"]]) %>% rename(cut = feature)
+cut <- rbind(cut_c, cut_l)
+
+public_l <- as.data.frame(public_nns[["Labour"]]) %>% rename(public = feature) 
+public_c <- as.data.frame(public_nns[["Conservative"]]) %>% rename(public = feature)
+public <- rbind(public_c, public_l)
+
+
+```
+
+Save data into CVs to put into word 
+```{r}
+write.csv(income, "income.csv", row.names = F)
+write.csv(job, "job.csv", row.names = F)
+write.csv(hous, "hous.csv", row.names = F)
+write.csv(eld, "eld.csv", row.names = F)
+write.csv(child, "child.csv", row.names = F)
+write.csv(parent, "parent.csv", row.names = F)
+write.csv(fam, "fam.csv", row.names = F)
+write.csv(educ, "educ.csv", row.names = F)
+write.csv(nhs, "nhs.csv", row.names = F)
+write.csv(immi, "immi.csv", row.names = F)
+write.csv(invest, "invest.csv", row.names = F)
+write.csv(benefit, "benefit.csv", row.names = F) 
+write.csv(cut, "cut.csv", row.names = F)
+write.csv(public, "public.csv", row.names = F)
+```
+
+
+
+
+

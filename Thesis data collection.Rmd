@@ -1,0 +1,1277 @@
+---
+title: "Thesis data collection"
+output: html_document
+date: "2023-07-02"
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This R Markdown contains the data and code used in my thesis for the MSc Applied Social Data Science at the LSE. The title of the paper is as follows: Decrypting Political Discourse: A comparative exploration of inequality in the Budget statements of the Labour Party (1997-2010) and the Conservative Party (2010-current).
+
+ 
+This study takes a three-fold approach to answer the research question: 
+1.	How are inequalities discussed in the Budget statements of the Conservative and Labour parties? 
+2.	How are inequalities represented in the Budget statements of the Conservative and Labour parties? 
+
+```{r}
+library(rvest)
+library(httr)
+library(tidyverse)
+library("udpipe")
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(quanteda.dictionaries)
+library(tidytext)
+
+## Begin with Conservative Party speeches 
+
+
+url <- "https://www.gov.uk/government/speeches/spring-budget-2023-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 338:1098)
+
+budget23 <- data.frame(paste(content$c............Spring.Budget.2023.speech...GOV.UK................., collapse = ""))
+
+year <- c(2023)
+budget23$year <- year
+
+budget23 <- budget23 %>% rename(text = paste.content.c............Spring.Budget.2023.speech...GOV.UK...................)
+
+# 2022 November
+url <- "https://www.gov.uk/government/speeches/the-autumn-statement-2022-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 345:1013)
+
+budget22 <- data.frame(paste(content$c............The.Autumn.Statement.2022.speech...GOV.UK........., collapse = ""))
+
+year <- c(2022)
+budget22$year <- year
+
+budget22 <- budget22 %>% rename(text = paste.content.c............The.Autumn.Statement.2022.speech...GOV.UK...........)
+
+# 2021 August 
+url <- "https://www.gov.uk/government/speeches/autumn-budget-and-spending-review-2021-speech"
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 346:1667)
+
+budget21b <- data.frame(paste(content$c............Autumn.Budget.and.Spending.Review.2021.Speech...GOV.UK..., collapse = ""))
+
+year <- c(20212)
+budget21b$year <- year
+
+budget21b <- budget21b %>% rename(text = paste.content.c............Autumn.Budget.and.Spending.Review.2021.Speech...GOV.UK.....)
+
+
+# 2021 March 
+url <- "https://www.gov.uk/government/speeches/budget-speech-2021"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 341:1124)
+
+budget21a <- data.frame(paste(content$c............Budget.Speech.2021...GOV.UK.......................CDATA...., collapse = ""))
+
+year <- c(2021)
+budget21a$year <- year
+
+budget21a <- budget21a %>% rename(text = paste.content.c............Budget.Speech.2021...GOV.UK.......................CDATA......)
+
+# 2020 March
+url <- "https://www.gov.uk/government/speeches/budget-speech-2020"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+content <- as.data.frame(content)
+content <- slice(content, 341:1616)
+
+budget20 <- data.frame(paste(content$c............Budget.Speech.2020...GOV.UK.......................CDATA...., collapse = ""))
+
+year <- c(2020)
+budget20$year <- year
+
+budget20 <- budget20 %>% rename(text = paste.content.c............Budget.Speech.2020...GOV.UK.......................CDATA......)
+
+# No budget in 2019! 
+
+# 2018
+
+url <- "https://www.gov.uk/government/speeches/budget-2018-philip-hammonds-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 338:1762)
+
+budget18 <- data.frame(paste(content$c............Budget.2018..Philip.Hammond.s.speech...GOV.UK..., collapse = ""))
+
+year <- c(2018)
+budget18$year <- year
+
+budget18 <- budget18 %>% rename(text = paste.content.c............Budget.2018..Philip.Hammond.s.speech...GOV.UK.....)
+
+# 2017 November 
+
+url <- "https://www.gov.uk/government/speeches/autumn-budget-2017-philip-hammonds-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 346:1452)
+
+budget17b <- data.frame(paste(content$c............Autumn.Budget.2017..Philip.Hammond.s.speech...GOV.UK..., collapse = ""))
+
+year <- c(20172)
+budget17b$year <- year
+
+budget17b <- budget17b %>% rename(text = paste.content.c............Autumn.Budget.2017..Philip.Hammond.s.speech...GOV.UK.....)
+
+# 2017 March 
+
+url <- "https://www.gov.uk/government/speeches/spring-budget-2017-philip-hammonds-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 343:943)
+
+budget17a <- data.frame(paste(content$c............Spring.Statement.2017..Philip.Hammond.s.speech...GOV.UK..., collapse = ""))
+
+year <- c(2017)
+budget17a$year <- year
+
+budget17a <- budget17a %>% rename(text = paste.content.c............Spring.Statement.2017..Philip.Hammond.s.speech...GOV.UK.....)
+
+# 2016 March
+url <- "https://www.gov.uk/government/speeches/budget-2016-george-osbornes-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 343:1458)
+
+budget16 <- data.frame(paste(content$c............Budget.2016..George.Osborne.s.speech...GOV.UK..., collapse = ""))
+
+year <- c(2016)
+budget16$year <- year
+
+budget16 <- budget16 %>% rename(text = paste.content.c............Budget.2016..George.Osborne.s.speech...GOV.UK.....)
+
+# 2015 July 
+url <- "https://www.gov.uk/government/speeches/chancellor-george-osbornes-summer-budget-2015-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 343:1366)
+
+budget15b <- data.frame(paste(content$c............Chancellor.George.Osborne.s.Summer.Budget.2015.speech...GOV.UK..., collapse = ""))
+
+year <- c(2015)
+budget15b$year <- year
+
+budget15b <- budget15b %>% rename(text = paste.content.c............Chancellor.George.Osborne.s.Summer.Budget.2015.speech...GOV.UK.....)
+
+# 2015 March
+url <- "https://www.gov.uk/government/speeches/chancellor-george-osbornes-budget-2015-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 348:1314)
+
+budget15a <- data.frame(paste(content$c............Chancellor.George.Osborne.s.Budget.2015.speech...GOV.UK..., collapse = ""))
+
+year <- c(2015)
+budget15a$year <- year
+
+budget15a <- budget15a %>% rename(text = paste.content.c............Chancellor.George.Osborne.s.Budget.2015.speech...GOV.UK.....)
+
+
+# 2014 March
+url <- "https://www.gov.uk/government/speeches/chancellor-george-osbornes-budget-2014-speech"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+content <- as.data.frame(content)
+content <- slice(content, 360:1309)
+
+budget14 <- data.frame(paste(content$c............Chancellor.George.Osborne.s.Budget.2014.speech...GOV.UK..., collapse = ""))
+
+year <- c(2014)
+budget14$year <- year
+
+budget14 <- budget14 %>% rename(text = paste.content.c............Chancellor.George.Osborne.s.Budget.2014.speech...GOV.UK.....)
+
+# 2013 March
+url <- "https://www.gov.uk/government/speeches/budget-2013-chancellors-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+content <- as.data.frame(content)
+content <- slice(content, 353:1248)
+
+budget13 <- data.frame(paste(content$c............Budget.2013..Chancellor.s.statement...GOV.UK..., collapse = ""))
+
+year <- c(2013)
+budget13$year <- year
+
+budget13 <- budget13 %>% rename(text = paste.content.c............Budget.2013..Chancellor.s.statement...GOV.UK.....)
+
+
+#2012 March
+url <- "https://www.gov.uk/government/speeches/autumn-statement-2012-chancellors-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 353:1084)
+
+budget12 <- data.frame(paste(content$c............Autumn.Statement.2012..Chancellor.s.statement...GOV.UK..., collapse = ""))
+
+year <- c(2012)
+budget12$year <- year
+
+budget12 <- budget12 %>% rename(text = paste.content.c............Autumn.Statement.2012..Chancellor.s.statement...GOV.UK.....)
+
+
+#2011 March
+url <- "https://publications.parliament.uk/pa/cm201011/cmhansrd/cm110323/debtext/110323-0001.htm#11032368001031"
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 572:967)
+
+
+budget11 <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2011)
+budget11$year <- year
+budget11 <- budget11 %>% rename(text = paste.content.df..collapse......)
+
+
+#2010 June
+# "https://hansard.parliament.uk/commons/2010-06-22/debates/10062245000001/FinancialStatement"
+
+budget10 <- readLines("~/Documents/ASDS/Quant/Financial Statement 2010-06-22.txt", encoding = "UTF-8")
+
+budget10 <- as.data.frame(budget10)
+
+budget10$budget10 <- gsub("\\d{2}:\\d{2}:\\d{2}", "", budget10$budget10)
+
+budget10 <- budget10[3:nrow(budget10), ]
+budget10 <- as.data.frame(budget10)
+
+budget10 <- data.frame(paste(budget10$budget10, collapse = ""))
+
+year <- c(2010)
+budget10$year <- year
+
+budget10 <- budget10 %>% rename(text = paste.budget10.budget10..collapse......)
+
+
+
+################################################################################
+# Now the Labour Party
+
+
+## June 1997
+url <- "https://api.parliament.uk/historic-hansard/commons/1997/jul/02/budget-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 68:203)
+
+budget97 <- data.frame(paste(content$c..Budget.Statement..Hansard..2.July.1997.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+year <- c(1997)
+budget97$year <- year
+
+budget97 <- budget97 %>% rename(text = paste.content.c..Budget.Statement..Hansard..2.July.1997.......var.appInsights.window.appInsights..function.a.......)
+
+
+## March 1998 - each part of the bill is split up so have to do it separately. 
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/introduction"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 57:63)
+
+budget98 <- data.frame(paste(content$c..INTRODUCTION..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98a <- budget98 %>% rename(text = paste.content.c..INTRODUCTION..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/stability-and-prudence"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:131)
+
+budget98 <- data.frame(paste(content$c..STABILITY.AND.PRUDENCE..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98b <- budget98 %>% rename(text = paste.content.c..STABILITY.AND.PRUDENCE..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/enterprise"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:166)
+
+budget98 <- data.frame(paste(content$c..ENTERPRISE..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98c <- budget98 %>% rename(text = paste.content.c..ENTERPRISE..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/work"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:251)
+
+budget98 <- data.frame(paste(content$c..WORK..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98d <- budget98 %>% rename(text = paste.content.c..WORK..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/supporting-families-and-children"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:192)
+
+budget98 <- data.frame(paste(content$c..SUPPORTING.FAMILIES.AND.CHILDREN..Hansard..17.March.1998...., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98e <- budget98 %>% rename(text = paste.content.c..SUPPORTING.FAMILIES.AND.CHILDREN..Hansard..17.March.1998......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/section-7-other-tax-measures"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:94)
+
+budget98 <- data.frame(paste(content$c..SECTION.7..OTHER.TAX.MEASURES..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98f <- budget98 %>% rename(text = paste.content.c..SECTION.7..OTHER.TAX.MEASURES..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1998/mar/17/public-spending"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:78)
+
+budget98 <- data.frame(paste(content$c..PUBLIC.SPENDING..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1998)
+budget98$year <- year
+
+budget98g <- budget98 %>% rename(text = paste.content.c..PUBLIC.SPENDING..Hansard..17.March.1998.......var.appInsights.window.appInsights..function.a.......)
+
+budget98 <- budget98a %>%
+  full_join(budget98b, by = c("text", "year")) %>%
+    full_join(budget98c, by = c("text", "year")) %>%
+      full_join(budget98d, by = c("text", "year")) %>%
+    full_join(budget98e, by = c("text", "year")) %>%
+    full_join(budget98f, by = c("text", "year")) %>%
+    full_join(budget98g, by = c("text", "year"))
+
+
+budget98 <- data.frame(paste(budget98$text, collapse = ""))
+
+budget98 <- budget98 %>% rename(text = paste.budget98.text..collapse......)
+
+year <- c(1998)
+budget98$year <- year
+## 1999
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/introduction"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 57:70)
+
+budget99 <- data.frame(paste(content$c..INTRODUCTION..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99a <- budget99 %>% rename(text = paste.content.c..INTRODUCTION..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/stability"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:231)
+
+budget99 <- data.frame(paste(content$c..STABILITY..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99b <- budget99 %>% rename(text = paste.content.c..STABILITY..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/enterprise"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:353)
+
+budget99 <- data.frame(paste(content$c..ENTERPRISE..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99c <- budget99 %>% rename(text = paste.content.c..ENTERPRISE..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/environment"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:116)
+
+budget99 <- data.frame(paste(content$c..ENVIRONMENT..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99d <- budget99 %>% rename(text = paste.content.c..ENVIRONMENT..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/families"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:225)
+
+budget99 <- data.frame(paste(content$c..FAMILIES..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99e <- budget99 %>% rename(text = paste.content.c..FAMILIES..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/the-elderly"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:211)
+
+budget99 <- data.frame(paste(content$c..THE.ELDERLY..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99f <- budget99 %>% rename(text = paste.content.c..THE.ELDERLY..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/work"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:235)
+
+budget99 <- data.frame(paste(content$c..WORK..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99g <- budget99 %>% rename(text = paste.content.c..WORK..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+url <- "https://api.parliament.uk/historic-hansard/commons/1999/mar/09/modernising-public-services"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 51:183)
+
+budget99 <- data.frame(paste(content$c..MODERNISING.PUBLIC.SERVICES..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(1999)
+budget99$year <- year
+
+budget99h <- budget99 %>% rename(text = paste.content.c..MODERNISING.PUBLIC.SERVICES..Hansard..9.March.1999.......var.appInsights.window.appInsights..function.a.......)
+
+budget99 <- budget99a %>%
+  full_join(budget99b, by = c("text", "year")) %>%
+    full_join(budget99c, by = c("text", "year")) %>%
+    full_join(budget99d, by = c("text", "year")) %>%
+    full_join(budget99e, by = c("text", "year")) %>%
+    full_join(budget99f, by = c("text", "year")) %>%
+    full_join(budget99g, by = c("text", "year")) %>%
+    full_join(budget99h, by = c("text", "year"))
+
+
+budget99 <- data.frame(paste(budget99$text, collapse = ""))
+
+budget99 <- budget99 %>% rename(text = paste.budget99.text..collapse......)
+year <- c(1999)
+budget99$year <- year
+
+## 2000
+url <- "https://api.parliament.uk/historic-hansard/commons/2000/mar/21/budget-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 68:300)
+
+budget00 <- data.frame(paste(content$c..Budget.Statement..Hansard..21.March.2000.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(2000)
+budget00$year <- year
+
+budget00 <- budget00 %>% rename(text = paste.content.c..Budget.Statement..Hansard..21.March.2000.......var.appInsights.window.appInsights..function.a.......)
+
+
+## 2001
+url <- "https://api.parliament.uk/historic-hansard/commons/2001/mar/07/budget-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 68:216)
+
+budget01 <- data.frame(paste(content$c..Budget.Statement..Hansard..7.March.2001.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(2001)
+budget01$year <- year
+
+budget01 <- budget01 %>% rename(text = paste.content.c..Budget.Statement..Hansard..7.March.2001.......var.appInsights.window.appInsights..function.a.......)
+
+## 2002
+url <- "https://api.parliament.uk/historic-hansard/commons/2002/apr/17/budget-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 68:242)
+
+budget02 <- data.frame(paste(content$c..Budget.Statement..Hansard..17.April.2002.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(2002)
+budget02$year <- year
+
+budget02 <- budget02 %>% rename(text = paste.content.c..Budget.Statement..Hansard..17.April.2002.......var.appInsights.window.appInsights..function.a.......)
+
+
+## 2003
+url <- "https://api.parliament.uk/historic-hansard/commons/2003/apr/09/budget-statement"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 68:249)
+
+budget03 <- data.frame(paste(content$c..Budget.Statement..Hansard..9.April.2003.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(2003)
+budget03$year <- year
+
+budget03 <- budget03 %>% rename(text = paste.content.c..Budget.Statement..Hansard..9.April.2003.......var.appInsights.window.appInsights..function.a.......)
+
+
+## 2004
+url <- "https://api.parliament.uk/historic-hansard/commons/2004/mar/17/introduction"
+
+response <- GET(url)
+
+content <- read_html(response) %>% html_text()
+
+content <- content %>%
+  strsplit(split = "\n") 
+
+
+content <- as.data.frame(content)
+content <- slice(content, 55:225)
+
+budget04 <- data.frame(paste(content$c..INTRODUCTION..Hansard..17.March.2004.......var.appInsights.window.appInsights..function.a....., collapse = ""))
+
+
+year <- c(2004)
+budget04$year <- year
+
+budget04 <- budget04 %>% rename(text = paste.content.c..INTRODUCTION..Hansard..17.March.2004.......var.appInsights.window.appInsights..function.a.......)
+
+## 2005
+url <- "https://publications.parliament.uk/pa/cm200405/cmhansrd/vo050316/debtext/50316-04.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 12:322)
+
+budget05 <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2005)
+budget05$year <- year
+
+budget05 <- budget05 %>% rename(text = paste.content.df..collapse......)
+
+## 2006
+url <- "https://publications.parliament.uk/pa/cm200506/cmhansrd/vo060322/debtext/60322-05.htm#60322-05_head2"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 13:397)
+
+budget06 <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2006)
+budget06$year <- year
+
+budget06 <- budget06 %>% rename(text = paste.content.df..collapse......)
+
+## 2007 
+url <- "https://publications.parliament.uk/pa/cm200607/cmhansrd/cm070321/debtext/70321-0004.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 10:162)
+
+budget07a <- data.frame(paste(content$df, collapse = ""))
+
+
+budget07a <- budget07a %>% rename(text = paste.content.df..collapse......)
+url <- "https://publications.parliament.uk/pa/cm200607/cmhansrd/cm070321/debtext/70321-0005.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 5:148)
+
+budget07b <- data.frame(paste(content$df, collapse = ""))
+
+budget07b <- budget07b %>% rename(text = paste.content.df..collapse......)
+
+budget07 <- budget07a %>%
+  full_join(budget07b, by = c("text"))
+
+budget07 <- data.frame(paste(budget07$text, collapse = ""))
+
+budget07 <- budget07 %>% rename(text = paste.budget07.text..collapse......)
+
+year <- c(2007)
+budget07$year <- year
+
+## 2008 
+
+url <- "https://publications.parliament.uk/pa/cm200708/cmhansrd/cm080312/debtext/80312-0004.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 7:168)
+
+budget08a <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2008)
+budget08a$year <- year
+
+budget08a <- budget08a %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200708/cmhansrd/cm080312/debtext/80312-0005.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 6:163)
+
+budget08b <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2008)
+budget08b$year <- year
+
+budget08b <- budget08b %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200708/cmhansrd/cm080312/debtext/80312-0006.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 6:54)
+
+budget08c <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2008)
+budget08c$year <- year
+
+budget08c <- budget08c %>% rename(text = paste.content.df..collapse......)
+
+
+budget08 <- budget08a %>%
+  full_join(budget08b, by = c("text", "year")) %>%
+  full_join(budget08c, by = c("text", "year")) 
+
+budget08 <- data.frame(paste(budget08$text, collapse = ""))
+
+budget08 <- budget08 %>% rename(text = paste.budget08.text..collapse......)
+
+year <- c(2008)
+budget08$year <- year
+
+## 2009 
+
+url <- "https://publications.parliament.uk/pa/cm200809/cmhansrd/cm090422/debtext/90422-0003.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 184:202)
+
+budget09a <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2009)
+budget09a$year <- year
+
+budget09a <- budget09a %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200809/cmhansrd/cm090422/debtext/90422-0004.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 5:223)
+
+budget09b <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2009)
+budget09b$year <- year
+
+budget09b <- budget09b %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200809/cmhansrd/cm090422/debtext/90422-0005.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 5:155)
+
+budget09c <- data.frame(paste(content$df, collapse = ""))
+
+
+budget09c <- budget09c %>% rename(text = paste.content.df..collapse......)
+
+
+budget09 <- budget09a %>%
+  full_join(budget09b, by = c("text")) %>%
+  full_join(budget09c, by = c("text")) 
+
+budget09 <- data.frame(paste(budget09$text, collapse = ""))
+
+budget09 <- budget09 %>% rename(text = paste.budget09.text..collapse......)
+year <- c(2009)
+budget09$year <- year
+
+## 2010
+url <- "https://publications.parliament.uk/pa/cm200910/cmhansrd/cm100324/debtext/100324-0004.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 23:197)
+
+budget10a <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2010)
+budget10a$year <- year
+
+budget10a <- budget10a %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200910/cmhansrd/cm100324/debtext/100324-0005.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 5:193)
+
+budget10b <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2010)
+budget10b$year <- year
+
+budget10b <- budget10b %>% rename(text = paste.content.df..collapse......)
+
+url <- "https://publications.parliament.uk/pa/cm200910/cmhansrd/cm100324/debtext/100324-0006.htm"
+
+content <- read_html(url) %>% html_text()
+content <- gsub("\\s+", " ", content)
+
+# Tokenize the text into sentences using the `udpipe` package
+doc <- udpipe(content, object = "english")
+
+df <- doc$sentence
+
+df <- as.data.frame(df)
+
+# Remove repeated sentences
+df <- distinct(df)
+
+content <- slice(df, 6:79)
+
+budget10c <- data.frame(paste(content$df, collapse = ""))
+
+year <- c(2010)
+budget10c$year <- year
+
+budget10c <- budget10c %>% rename(text = paste.content.df..collapse......)
+
+
+budget10Lab <- budget10a %>%
+  full_join(budget10b, by = c("text", "year")) %>%
+  full_join(budget10c, by = c("text", "year")) 
+
+budget10Lab <- data.frame(paste(budget10Lab$text, collapse = ""))
+budget10Lab$paste.budget10Lab.text..collapse......
+
+budget10Lab <- budget10Lab %>% rename(text = paste.budget10Lab.text..collapse......)
+
+year <- c(2010)
+budget10Lab$year <- year
+
+
+```
+
+Now make into corpus/dfm data to complete analysis!
+```{r}
+# Join budgets
+c <- budget97 %>%
+  full_join(budget98, by = c("year", "text")) %>%
+  full_join(budget99, by = c("year", "text")) %>%
+  full_join(budget00, by = c("year", "text")) %>%
+  full_join(budget01, by = c("year", "text")) %>%
+  full_join(budget02, by = c("year", "text")) %>%
+  full_join(budget03, by = c("year", "text")) %>%
+  full_join(budget04, by = c("year", "text")) %>%
+  full_join(budget05, by = c("year", "text")) %>%
+  full_join(budget06, by = c("year", "text")) %>%
+  full_join(budget07, by = c("year", "text")) %>%
+  full_join(budget08, by = c("year", "text")) %>%
+  full_join(budget09, by = c("year", "text")) %>%
+  full_join(budget10Lab, by = c("year", "text")) %>%
+  full_join(budget10, by = c("year", "text")) %>%
+  full_join(budget11, by = c("year", "text")) %>%
+  full_join(budget12, by = c("year", "text")) %>%
+  full_join(budget13, by = c("year", "text")) %>%
+  full_join(budget14, by = c("year", "text")) %>%
+  full_join(budget15a, by = c("year", "text")) %>%
+  full_join(budget15b, by = c("year", "text")) %>%
+  full_join(budget16, by = c("year", "text")) %>%
+  full_join(budget17a, by = c("year", "text")) %>%
+  full_join(budget17b, by = c("year", "text")) %>%
+  full_join(budget18, by = c("year", "text")) %>%
+  full_join(budget20, by = c("year", "text")) %>%
+  full_join(budget21a, by = c("year", "text")) %>%
+  full_join(budget21b, by = c("year", "text")) %>%
+  full_join(budget22, by = c("year", "text")) %>%
+  full_join(budget23, by = c("year", "text"))
+
+c$party <- c("Labour", "Labour", "Labour", "Labour", "Labour", "Labour", "Labour", "Labour" ,"Labour","Labour", "Labour", "Labour", "Labour", "Labour", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative", "Conservative")
+
+c$speaker <- c("Gordon Brown 97","Gordon Brown 98", "Gordon Brown 99", "Gordon Brown 00", "Gordon Brown 01", "Gordon Brown 02", "Gordon Brown 03", "Gordon Brown 04", "Gordon Brown 05", "Gordon Brown 06", "Gordon Brown 07", "Alistair Darling 08",  "Alistair Darling 09", "Alistair Darling March 10", "George Osborne 10","George Osborne 11", "George Osborne 12", "George Osborne 13", "George Osborne 14", "George Osborne March 15", "George Osborne July 15", "George Osborne 16","Phillip Hammond March 17","Phillip Hammond Nov 17","Phillip Hammond 18", "Rishi Sunak 20","Rishi Sunak March 21","Rishi Sunak Oct 21", "Jeremy Hunt 22", "Jeremy Hunt 23")
+
+c$yearInGov <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 2, 3, 1, 2, 3, 4, 5, 6, 6, 1, 1, 1, 2, 2, 3, 4, 1, 2)
+
+#write.csv(c, 'BudgetStatementsCleaned.csv')
+
+#donwload the corpus 
+c <- read.csv("~/Documents/ASDS/Thesis /BudgetStatementsCleaned.csv") %>%
+  select(-c(X))
+```
+
+

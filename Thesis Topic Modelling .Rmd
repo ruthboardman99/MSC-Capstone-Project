@@ -1,0 +1,289 @@
+---
+title: "Thesis Topic Modelling"
+output:
+  word_document: default
+  html_document: default
+date: "2023-06-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook contains the code for the topic modelling section of my thesis, looking at the discourse around topics relating to inequalities in the budgets. Much of the analysis is based off the work from Roberts et al (2019).
+
+Roberts, M. E., Stewart, B. M., & Tingley, D. (2019) ‘stm: An R Package for Structural Topic Models’, Journal of Statistical Software, 91(2), 1–40. Available at: https://doi.org/10.18637/jss.v091.i02 (Accessed: 10 May 2023).
+
+```{r}
+# Install/download the packages 
+library(topicmodels)
+library(lda)
+library(slam)
+library(stm)
+library(ggplot2)
+library(dplyr)
+library(tidytext)
+library(tm) # Framework for text mining
+library(tidyverse) # Data preparation and pipes %>%
+library(ggplot2) # For plotting word frequencies
+#install.packages(library("wordcloud")) # Wordclouds!
+library(Rtsne)
+#install.packages(library(rsvd))
+library("wordcloud")
+library(quanteda)
+```
+
+As the data has been cleaned and saved as a csv file in the "Thesis Data Collection .Rmd", we simple have to call that csv here and complete the analysis from there. 
+```{r}
+c <- read.csv("~/Documents/ASDS/Thesis /BudgetStatementsCleaned.csv") %>%
+  select(-c(X))
+
+```
+
+
+Begin the topic modelling process. First the dataframe is cleaned using textProcessor, removing stop words, custom stops, numbers, punctuation, and words that are 2 letters or less long. 
+
+```{r}
+metaData <- c %>% select(-text)
+topicsCorpus <- textProcessor(c$text, metadata = metaData,
+              lowercase = TRUE, #*
+              removestopwords = TRUE, #*
+              removenumbers = TRUE, #*
+              removepunctuation = TRUE, #*
+              stem = TRUE, #*
+              wordLengths = c(2,Inf), #*
+              sparselevel = 1, #*
+              language = "en", #*
+              verbose = TRUE, #*
+              onlycharacter = TRUE, # not def
+              striphtml = FALSE, #*
+              customstopwords = c("can", "also", "get", "now", "government", "uk", "make", "already", "means", "next", "us", "mr", "speaker", "deputy", "want", "like", "tax", "year", "per", "cent", "today", "new", "2015-16", "rhf",  "its", "well", "were", "weve", "thats", "march", "cent", "pre-budget", "honourable",  "going", "don’t", "let", ".", "cent", "say", "people", "plan", "today", "largest", "thank", "column", "will", "country", "need", "deliver", "announce", "propose", "promise", "week", "countries", "set", "budget", "billion", "million", "april", "britain", "promis", "invest", "support", "just", "meet", "take", "work", "bn", "economic", "economy", "secretaries", "made", "announcing", "are", "able", "forecast", "united kingdom", "british", "get", "year", "madame", "measure", "done", "take", "fact", "one", "even","making", "many", "still", "without", "know", "course", "way", "much", "almost", "really", "put", "part", "know", "makes", "another", "many", "least", "yet", "back", "getting", "terms", "believe", "long", "good", "must", "look", "continue", "come", "far", "past", "see", "what", "real", "getting", "keep", "enough", "find", "simply", "bill", "place", "last", "around", "actually", "however", "think", "many", "first", "needs", "right", "less", "little", "bring", "thing", "bring", "across", "needed"), #*
+              v1 = FALSE)
+# Plot the removed 
+plotRemoved(topicsCorpus$documents, lower.thresh = seq(1, 200, by = 100))
+
+
+# Filter out terms that don’t appear in more than 2 documents.
+# Note: the results is 30 documents, 2301 terms and 18711 tokens. 
+out <- prepDocuments(topicsCorpus$documents, topicsCorpus$vocab, topicsCorpus$meta, lower.thresh=2)
+
+docs <- out$documents
+vocab <- out$vocab
+meta <-out$meta
+```
+
+Find the optimal number of topics --> from results, looks like it is 9.
+
+```{r}
+# Look at semantic coherence- the highest score is the best (). 
+# Note: as there is only a short number of documents with a large but not huge number of tokens, the results are unstable and change with each run of serachK https://www.rdocumentation.org/packages/stm/versions/1.3.6/topics/searchK 
+
+findingk <- searchK(out$documents, out$vocab, K = c(4:20),
+                      prevalence =~ party + yearInGov, 
+                    data = out$meta, verbose=FALSE, init.type = "Spectral")
+
+
+# Plot --> want high semantic coherence and exclusivity, so need to find a point inbetween. 
+plot <- data.frame("Coherence" = unlist(findingk$results$semcoh),
+                   "Exclusivity" = unlist(findingk$results$exclus))
+k <- c("K.4L","K.5L","K.6L","K.7L","K.8L","K.9L","K.10L","K.11L","K.12L","K.13L","K.14L","K.15L","K.16L","K.17L", "K.18L", "K.19L","K.20L")
+plot$K <- k
+
+ggplot(plot, aes(x = Exclusivity, y = Coherence, label = K))+
+  geom_text(aes(y = Coherence), size = 3) + geom_smooth(method=lm, se=FALSE) +  scale_shape_manual(values=c(1,16)) + 
+  # Getting rid of many graphical elements, incrasing font size
+  theme_bw(base_size = 12) + 
+        # Removing major gridlines
+  theme(panel.grid.major=element_blank(), 
+        # Removing minor gridlines
+        panel.grid.minor=element_blank(), 
+        # Removing panel border
+        panel.border=element_blank(),     
+        # Adding black line along axes
+        axis.line=element_line(),         
+        # Changing font to Times
+        text=element_text(family = "Times"), 
+        # Removing legend title
+        legend.title=element_blank(),
+        # Increasing size of y-axis labels
+        axis.text.y=element_text(size = 12),
+        # Increasing size of x-axis labels
+        axis.text.x=element_text(size = 12)) +
+  # Move legend into plot to fill empty space
+  theme(legend.position = c(.1, .9)) + 
+  # Proper formatting of labels for x and y axes
+  labs(x = "Coherence", y = "Exclusivity") 
+```
+
+Carsten Schwemmer & Sebastian Jungkunz (2019) Whose ideas are worth spreading? The representation of women and ethnic groups in TED talks, Political Research Exchange, 1:1, 1-23, DOI: 10.1080/2474736X.2019.1646102
+
+```{r}
+## Plot the stm 
+First_STM <- stm(out$documents, out$vocab, K = 9,
+                   prevalence =~ party + s(year) + speaker + yearInGov,
+                   data = meta,
+                   seed = 5, max.em.its = 5,
+                   init.type = "Spectral", 
+                 gamma.prior = 'L1')
+
+#plotModels(First_STM, pch=c(1,2,3,4), legend.position="bottomright")
+# Plot  Topic Model
+plot(First_STM)
+labelTopics(First_STM)
+plot.STM(First_STM, type = "summary")
+
+## Look at which speakers and parties have the highest theta scores. 
+# Theta shows the proportion that a document belongs to a topic. 
+First_STM$beta
+theta_scores <- First_STM$theta %>% as.data.frame()
+theta_scores$speaker <- out$meta$speaker
+topics_long <- theta_scores %>%
+  pivot_longer(cols = V1:V9,
+               names_to = "topic",
+               values_to = "theta")
+toptopics <- topics_long %>%
+  group_by(speaker) %>%
+  slice_max(theta)
+
+colnames(toptopics)[1] <- "speaker"
+colnames(toptopics)[2] <- "topics"
+
+TopicsData <- as.data.frame(toptopics)
+
+TopicsData <- TopicsData %>% left_join(c, by = "speaker") %>%
+  select(-c(text))
+
+TopicsData <- TopicsData %>%
+  mutate(topics = recode(topics, V1 = "Housing", V2 = "Families & Children", V3 = "Employment & Business", V4 = "Education", V5 = "General", V6 = "Money", V7 = "Welfare Promises", V8 = "British Growth", V9 = "British Growth"))
+```
+
+The analysis begins here. According to Roberts et al., there are three ways to understand and interpret an STM model whcih are as follows: 
+"1. Displaying words associated with topics (labelTopics, plot.STM(,type = "labels"), sageLabels, plot.STM(,type = "perspectives")) or documents highly associated with particular topics (findThoughts, plotQuote).
+2. Estimating relationships between metadata and topics/topical content (estimateEffect).
+3. Calculating topic correlations (topicCorr)." (p. 13)
+This analysis will complete the first two, as they will give greater insight into the words in each topic, hoping to see if the use of words relating to inequalities are more frequently grouped together, and then how each topic is associated to both of the political parties. 
+
+Topic proportion plots - in general and by party. 
+```{r}
+# Looks at scores of topics 
+lableTopicsList <- list(labelTopics(First_STM))
+
+# Doesn't work as the text is super long 
+#findThoughts(First_STM, topics = 9, texts = c$text)
+
+plot(First_STM, labeltype = "frex")
+# Find the top 8 most frequent/exclusive words per topic using the beta scores. 
+# Use results to label topics. 
+stm_beta <- tidytext::tidy(First_STM) 
+
+stm_beta %>%
+  group_by(topic) %>%
+  filter(beta > 0.005) %>%
+  top_n(8, beta) %>%
+ ungroup() %>%
+    mutate(topic = paste0("Topic ", topic),
+         term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = as.factor(topic))) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free_y", labeller = labeller(topic = c(
+    'Topic 1' = "Housing", 'Topic 2' = "Families and Children", 'Topic 3' = "Employment and Business", 'Topic 4' = "Education", 'Topic 5' = "General", 'Topic 6' = "Money", 'Topic 7' = "Welfare Promises", 'Topic 8' = "British Growth", 'Topic 9' = "British Growth"))) +
+  coord_flip() +
+  scale_x_reordered() +
+  theme_bw(base_size = 12) + 
+        # Removing major gridlines
+  theme(panel.grid.major=element_blank(), 
+        # Removing minor gridlines
+        panel.grid.minor=element_blank(), 
+        # Removing panel border
+        panel.border=element_blank(),     
+        # Adding black line along axes
+        axis.line=element_line(),         
+        # Changing font to Times
+        text=element_text(family = "Times"), 
+        # Removing legend title
+        legend.title = element_text(size = 12),
+        # Increasing size of y-axis labels
+        axis.text.y=element_text(size = 12),
+        # Increasing size of x-axis labels
+        axis.text.x=element_text(size = 12)) +
+  labs(x = NULL, y = expression(beta))
+
+
+# Look at topic proportions in general 
+topicNames<-c(" Housing", "Families and Children", "Employment and Business", "Education", "General", "Money", "Welfare Promises", "British Growth","British Growth")
+par(bty="n",col="grey40",lwd=5)
+plot(First_STM, custom.labels = topicNames)
+cloud(First_STM, topic = 2)
+plot(First_STM)
+
+TopicsData$number <- c(rep(1, 30))
+# Look at highest topic proportion by party
+ ggplot(TopicsData) +
+  geom_col(aes(x = topics, y = number, fill = party))+ scale_shape_manual(values=c(1,16)) + 
+  #scale_fill_manual(values = c("black", "grey")) +
+  # Getting rid of many graphical elements, incrasing font size
+  theme_bw(base_size = 12) + 
+        # Removing major gridlines
+  theme(panel.grid.major=element_blank(), 
+        # Removing minor gridlines
+        panel.grid.minor=element_blank(), 
+        # Removing panel border
+        panel.border=element_blank(),     
+        # Adding black line along axes
+        axis.line=element_line(),         
+        # Changing font to Times
+        text=element_text(family = "Times"), 
+        # Removing legend title
+        legend.title = element_text(size = 12),
+        # Increasing size of y-axis labels
+        axis.text.y=element_text(size = 12),
+        # Increasing size of x-axis labels
+        axis.text.x=element_text(size = 12)) +
+ #theme(axis.text.x = element_text(angle = 5)) +
+  # Proper formatting of labels for x and y axes
+  labs(x = "Topic", y = "Number of Statements", fill = "Party") + 
+   coord_flip()
+
+# By Chancellor 
+#ggplot(TopicsData) +
+#  geom_col(aes(x = speaker, y = theta, fill = topics))
+
+
+```
+
+Estimating relationship between metadata and topics. 
+```{r}
+
+# Now estimate effect 
+
+class(out$meta$year)
+
+out$meta$party <- as.factor(out$meta$party)
+out$meta$speaker <- as.factor(out$meta$speaker)
+
+
+## Estimate effects of Party (and Year in Government).
+prep <- estimateEffect(1:9 ~  party,stmobj = First_STM, meta = out$meta, uncertainty = "Global")
+prep2 <- estimateEffect(1:9 ~  party + yearInGov,stmobj = First_STM, meta = out$meta, uncertainty = "Global")
+prep3 <- estimateEffect(1:9 ~  party + yearInGov + s(year),stmobj = First_STM, meta = out$meta, uncertainty = "Global")
+summary(prep)
+summary(prep2)
+
+
+```
+To label each topics: 
+1- Fixing the housing crisis 
+2- Families and Children 
+3- Employment and businesses
+4- Education  
+5- General 
+6- Money
+7- Welfare promises (includes "loneparents", "elderly", "housing")
+8- British growth ("stronger"
+9- British growth ("stronger")
+
+
+
+
+
+
